@@ -2,13 +2,14 @@ import cv2
 import numpy as np
 
 #kamera ac
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(4)
 
 # bir tane frame oku
 ret, frame = cap.read()
 
 if not ret:
     print("Frame okunamadi.")
+
 
 # detection
 face_cascade = cv2.CascadeClassifier("1_meanshift_camshift/haarcascade_frontalface_default.xml")
@@ -41,3 +42,23 @@ while True:
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         
         # Back projection
+        dst = cv2.calcBackProject([hsv], [0], roi_hist, [0, 180], 1)
+        # histogrami bir goruntude bulmak icin kullaniyoruz
+        # boylece takip gerceklesiyor
+        # piksel karsilastirma
+        
+        # Meanshift algoritmasi
+        ret, track_window = cv2.meanShift(dst, track_window, term_crit)
+        
+        x, y, w, h = track_window
+        
+        img2 = cv2.rectangle(frame, (x, y), (x+w, y+h), (0,0,255), 5)
+        
+        cv2.imshow("Takip", img2)
+        
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+
+cap.release()
+cv2.destroyAllWindows()
+            
