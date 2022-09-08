@@ -17,14 +17,6 @@ print("Tracker:", tracker_name)
 
 tracker = OPENCV_OBJECT_TRACKERS[tracker_name]
 
-# Ground truth'u yukle;
-
-gt = pd.read_csv("gt_new.txt")
-
-# Videoyu ice aktar;
-
-# video_path = "MOT17_13_SDP.mp4"
-
 video_path = '/dev/v4l/by-id/usb-046d_HD_Pro_Webcam_C920_E24A993F-video-index0'
 cap = cv2.VideoCapture(video_path)
 
@@ -47,23 +39,6 @@ while True:
     if ret:
         frame = cv2.resize(frame, (960, 540))
         (H, W) = frame.shape[:2]
-        
-        # ground truth
-        car_gt = gt[gt.frame_no == f]
-        
-        if len(car_gt) != 0:
-            
-            # 0. frame'de bir nesne sececegiz, secilen nesneyi boosting takip edecek.
-            # Secilen nesnenin konum bilgileri;
-            x = car_gt.x.values[0]
-            y = car_gt.y.values[0]
-            h = car_gt.h.values[0]
-            w = car_gt.w.values[0]
-            center_x = car_gt.center_x.values[0]
-            center_y = car_gt.center_y.values[0]
-            
-            cv2.rectangle(frame, (x,y), (x+w, y+h), (0,255,0), 2)
-            cv2.circle(frame, (center_x, center_y), 2, (0,0,255), -1)
             
         # Gorsellestirme
         key = cv2.waitKey(1) & 0xFF
@@ -73,21 +48,17 @@ while True:
             
             (success, box) = tracker.update(frame)
             
-            # Basari metrigini belirlemek icin gt'nin frame icinde olmasi gerekiyor.
-            # Bunu kontrol edebilmek icin if kosulu;
-            if f <= np.max(gt.frame_no):
+            (x, y, w, h) = [int(i) for i in box]
             
-                (x, y, w, h) = [int(i) for i in box]
-                
-                cv2.rectangle(frame, (x,y), (x+w, y+h), (0,0,255), 2)
-                
-                success_frame_track = success_frame_track + 1
-                
-                track_center_x = int(x+w/2)
-                track_center_y = int(y+h/2)
-                
-                # ground truth ile tracking sonucunu karsilastirabilmek icin;
-                track_list.append([f, track_center_x, track_center_y])
+            cv2.rectangle(frame, (x,y), (x+w, y+h), (0,0,255), 2)
+            
+            success_frame_track = success_frame_track + 1
+            
+            track_center_x = int(x+w/2)
+            track_center_y = int(y+h/2)
+            
+            # ground truth ile tracking sonucunu karsilastirabilmek icin;
+            track_list.append([f, track_center_x, track_center_y])
         
             # Tracking sonuclarini gorsellestirme;
             info = [("Tracker:", tracker_name),
@@ -129,22 +100,15 @@ track_df = pd.DataFrame(track_list, columns=["frame_no", "center_x", "center_y"]
 if len(track_df) != 0:
     print("Tracking Algorithm:", tracker)
     print("Time:", time_diff)
-    print("Number of frame to track (gt):", len(gt))
     print("Number of frame to track (track success):", success_frame_track)
     
     track_df_frame = track_df.frame_no
     
-    gt_center_x = gt.center_x[track_df_frame].values
-    gt_center_y = gt.center_y[track_df_frame].values
-
     track_df_center_x = track_df.center_x.values
     track_df_center_y = track_df.center_y.values
     
-    plt.plot(np.sqrt((gt_center_x-track_df_center_x)**2 + (gt_center_y-track_df_center_y)**2))
     plt.xlabel("frame")
     plt.ylabel("Euclidian Distance btw gt and track")
-    error = np.sum((gt_center_x-track_df_center_x)**2 + (gt_center_y-track_df_center_y)**2)
-    print("Total error:", error)
 
 
 
